@@ -40,6 +40,5 @@ This project is licensed under the [MIT License](LICENSE). You are free to use, 
 
 ## 👨‍💻 About Me
 
-Im Abdallah Albakri, a Computer Engineering student who is passionate about specializing in Data Engineering.
+ I'm **Abdallah Albakri**, a Computer Engineering student who is passionate about specializing in Data Engineering...
 
-Hi there! I'm **Baraa Khatib Salkini**, also known as **Data With Baraa**. I'm an IT professional and passionate YouTuber on a mission to share knowledge...
