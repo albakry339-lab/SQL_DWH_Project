@@ -1,3 +1,6 @@
+*/ 
+NOTE : This ddl functions was created to prepare tables of our non-filtered data  
+/*
 -- ===========================================
 --CRM (bronze.crm_cust_info)
 -- ===========================================
