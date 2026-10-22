@@ -10,7 +10,7 @@ CREATE TABLE silver.erp_cust_az12 (
     gen NVARCHAR(50) ,
     dwh_create_time datetime2 default getdate()
 );
-
+truncate table silver.crm_cust_info; /* To avoid dubs */
 insert into silver.crm_cust_info (
 cst_id,
 cst_key,
@@ -49,6 +49,24 @@ WHERE flag_last = 1
 
 ---------------- CRM2
 
+IF OBJECT_ID('silver.crm_prd_info', 'U') IS NOT NULL
+    DROP TABLE silver.crm_prd_info;
+CREATE TABLE silver.crm_prd_info (
+    prd_id INT,
+    prd_key NVARCHAR(50),
+    prd_nm NVARCHAR(50),
+    prd_cost INT,
+    prd_line NVARCHAR(50),
+    prd_start_dt DATETIME,
+    prd_end_dt DATETIME,
+    dwh_create_time datetime2 default getdate() 
+);
+--After filtering data the following gonna be edited :
+  prd_start_dt DATETIME >>> Date,
+    prd_end_dt DATETIME >>> Date,
+++ adding : cat_id NVARCHAR(50)
+
+truncate table silver.crm_prd_info ;
 INSERT INTO silver.crm_prd_info (
     prd_id,
     prd_key,
@@ -77,6 +95,94 @@ from bronze.crm_prd_info
 
 select*
 from silver.crm_prd_info
+
+--------------------------------- CRM 3 (By details)
+
+
+SELECT DISTINCT 
+    sls_sales AS old_sls_sales,
+    sls_quantity,
+    sls_price AS old_sls_price,
+    CASE 
+        WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_quantity)
+        THEN sls_quantity * ABS(sls_price)
+        ELSE sls_sales
+    END AS sls_sales,
+    CASE 
+        WHEN sls_price IS NULL OR sls_price <= 0 
+        THEN sls_sales / NULLIF(sls_quantity, 0)
+        ELSE sls_price
+    END AS sls_price
+FROM bronze.crm_sales_details 
+WHERE sls_sales != sls_quantity * sls_price     /* which means "execute if :" */
+   OR sls_sales IS NULL
+   OR sls_quantity IS NULL
+   OR sls_price IS NULL
+   OR sls_sales <= 0
+   OR sls_quantity <= 0
+   OR sls_price <= 0
+ORDER BY sls_sales, sls_quantity, sls_price
+
+
+ -- Edit data types 
+
+
+IF OBJECT_ID('silver.crm_sales_details', 'U') IS NOT NULL
+    DROP TABLE silver.crm_sales_details;
+CREATE TABLE silver.crm_sales_details (
+    sls_ord_num NVARCHAR(50),
+    sls_prd_key NVARCHAR(50),
+    sls_cust_id INT,
+    sls_order_dt date,
+    sls_ship_dt date,
+    sls_due_dt date,
+    sls_sales INT,
+    sls_quantity INT,
+    sls_price INT
+);
+
+ -- Inserting into table crm_sales_details
+
+ truncate table silver.crm_sales_details ;
+ insert into silver.crm_sales_details (
+ sls_ord_num,
+sls_prd_key,
+sls_cust_id ,
+    sls_order_dt ,
+    sls_ship_dt ,
+    sls_due_dt ,
+    sls_sales ,
+    sls_quantity ,
+    sls_price )
+    select
+sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+case when sls_order_dt=0 or len(sls_order_dt) != 8 then null 
+else cast (cast (sls_order_dt as varchar) as date) 
+end as sls_order_dt ,
+
+case when sls_ship_dt=0 or len(sls_ship_dt) != 8 then null 
+else cast (cast (sls_ship_dt as varchar) as date) 
+end as sls_ship_dt,
+
+case when sls_due_dt=0 or len(sls_due_dt) != 8 then null 
+else cast (cast (sls_due_dt as varchar) as date) 
+end as sls_due_dt ,
+ CASE 
+        WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_quantity)
+        THEN sls_quantity * ABS(sls_price)
+        ELSE sls_sales
+    END AS sls_sales,
+    sls_quantity,
+   CASE 
+        WHEN sls_price IS NULL OR sls_price <= 0 
+        THEN sls_sales / NULLIF(sls_quantity, 0)
+        ELSE (sls_price)
+    END AS sls_price
+from bronze.crm_sales_details
+
+
 ---------------------------ERP1
 
 IF OBJECT_ID('silver.erp_cust_az12', 'U') IS NOT NULL
@@ -116,7 +222,7 @@ else 'n/a'
 end as gen
 from [bronze].[erp_cust_az12]; 
 
-
+truncate table silver.erp_cust_az12 ;
 insert into silver.erp_cust_az12 (
 cid,
 bdate,
