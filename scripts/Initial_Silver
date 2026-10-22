@@ -1,0 +1,212 @@
+
+
+------ CRM1
+--Data types will be reviewed when filtering data ends .
+IF OBJECT_ID('silver.erp_cust_az12', 'U') IS NOT NULL
+    DROP TABLE silver.erp_cust_az12;
+CREATE TABLE silver.erp_cust_az12 (
+    cid NVARCHAR(50),
+    bdate DATE,
+    gen NVARCHAR(50) ,
+    dwh_create_time datetime2 default getdate()
+);
+
+insert into silver.crm_cust_info (
+cst_id,
+cst_key,
+cst_firstname,
+cst_lastname,
+cst_marital_status,
+cst_gndr,
+cst_create_date ) 
+
+SELECT  
+cst_id,
+cst_key,
+trim(cst_firstname) as cst_firstname,
+trim(cst_lastname) as cst_lastname,
+case when upper (trim(cst_marital_status)) = 'S' 
+then 'Single'
+when upper (trim(cst_marital_status)) = 'M' 
+then 'Married'
+else 'n/a'
+end cst_marital_status,
+case when upper (trim(cst_gndr)) = 'M' 
+then 'Male'
+when upper (trim(cst_gndr)) = 'F' 
+then 'Female'
+else 'n/a'
+end cst_gndr,
+cst_create_date
+FROM (
+    SELECT *, 
+           ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date desc) AS flag_last
+    FROM bronze.crm_cust_info
+) t 
+WHERE flag_last = 1 
+
+
+
+---------------- CRM2
+
+INSERT INTO silver.crm_prd_info (
+    prd_id,
+    prd_key,
+    cat_id,
+    prd_nm,
+    prd_line,
+    prd_start_dt,
+    prd_end_dt
+)
+SELECT
+prd_id,
+replace(substring(prd_key,1,5),'-','_') as cat_id,
+substring(prd_key,7,len(prd_key)) as prd_key,
+isnull(prd_nm,0) as prd_nm,
+case  upper(trim(prd_line)) 
+when  'M' then 'Mountain'
+when  'R' then 'Road'
+when  'S' then 'Other Sale'
+when  'T' then 'Touring'
+else 'n/a'
+end as prd_line ,
+cast (prd_start_dt as date) prd_start_dt,
+cast (lead(prd_start_dt) over(partition by prd_key order by prd_start_dt) -1 as date) prd_end_dt
+from bronze.crm_prd_info
+
+
+select*
+from silver.crm_prd_info
+---------------------------ERP1
+
+IF OBJECT_ID('silver.erp_cust_az12', 'U') IS NOT NULL
+    DROP TABLE silver.erp_cust_az12;
+CREATE TABLE silver.erp_cust_az12 (
+    cid NVARCHAR(50),
+    bdate DATE,
+    gen NVARCHAR(50) ,
+    dwh_create_time datetime2 default getdate()
+);
+
+select
+cid as old_cid, -- for comparing
+case when cid like 'NAS%' 
+then substring(cid,4,len(cid))
+else 'n/a'
+end as cid,
+
+-- For testing
+/*select 
+bdate
+from bronze.erp_cust_az12
+where bdate >getdate() /* (Current date) */ */
+case when bdate >getdate() 
+then null
+else bdate
+end as bdate,
+-- For testing 
+/*select distinct gen
+from [bronze].[erp_cust_az12];
+*/
+case when upper(trim(gen)) in ('F','Female')
+then 'Female'
+when upper(trim(gen)) in ('M','Male')
+then 'Male'
+else 'n/a'
+end as gen
+from [bronze].[erp_cust_az12]; 
+
+
+insert into silver.erp_cust_az12 (
+cid,
+bdate,
+gen)
+select
+case when cid like 'NAS%' 
+then substring(cid,4,len(cid))
+else 'n/a'
+end as cid,
+
+case when bdate >getdate() 
+then null
+else bdate
+end as bdate,
+
+case when upper(trim(gen)) in ('F','Female')
+then 'Female'
+when upper(trim(gen)) in ('M','Male')
+then 'Male'
+else 'n/a'
+end as gen
+from bronze.erp_cust_az12
+
+---------------------- ERP2
+
+IF OBJECT_ID('silver.erp_loc_a101', 'U') IS NOT NULL
+    DROP TABLE silver.erp_loc_a101;
+CREATE TABLE silver.erp_loc_a101 (
+    cid NVARCHAR(50),
+    cntry NVARCHAR(50),
+    dwh_create_time datetime2 default getdate()
+);
+
+select
+replace(cid,'-','') as cid,
+case when trim(cntry) = 'DE' then 'Germany'
+when trim(cntry) in ('US','USA') then 'United States'
+ when trim(cntry) = '' or trim(cntry) is null then 'n/a'
+ else trim(cntry) 
+ end as cntry
+from bronze.erp_loc_a101
+
+  truncate table silver.erp_loc_a101 ;
+insert into silver.erp_loc_a101 ( cid ,cntry) 
+select
+replace(cid,'-','') as cid,
+case when trim(cntry) = 'DE' then 'Germany'
+when trim(cntry) in ('US','USA') then 'United States'
+ when trim(cntry) = '' or trim(cntry) is null then 'n/a'
+ else trim(cntry) 
+ end as cntry
+from bronze.erp_loc_a101 
+
+
+select* from silver.erp_loc_a101
+ -- Checking
+ select distinct cntry 
+ from silver.erp_loc_a101
+
+--------------------------------------------ERP3
+
+   IF OBJECT_ID('silver.erp_px_cat_g1v2', 'U') IS NOT NULL
+    DROP TABLE silver.erp_px_cat_g1v2;
+CREATE TABLE silver.erp_px_cat_g1v2 (
+    id NVARCHAR(50),
+    cat NVARCHAR(50),
+    subcat NVARCHAR(50),
+    maintenance NVARCHAR(50),
+    dwh_create_time datetime2 default getdate()
+);
+
+ /*testing 
+select
+cat,
+subcat,
+maintenance
+from [silver].[erp_px_cat_g1v2]
+where cat != trim(cat)
+ or subcat != trim(subcat)
+ or maintenance !=trim(maintenance) */
+
+  truncate table silver.erp_px_cat_g1v2 ;
+  insert into silver.erp_px_cat_g1v2 (
+  id,cat,subcat,maintenance)
+  select 
+  id,
+  cat,
+  subcat,
+  maintenance
+   from bronze.erp_px_cat_g1v2
+
+   select* from silver.erp_px_cat_g1v2
+/*NOTE: No changes on Data Types */
