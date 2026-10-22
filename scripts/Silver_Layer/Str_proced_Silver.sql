@@ -1,12 +1,20 @@
-/* NOTE : Purpose: Automates the transformation and loading (ETL) process for the Silver layer in the Data Warehouse, cleaning and transforming raw data from 6 source tables in the Bronze layer.
 
-Core Mechanisms:
+----------------------------------------------------------------------------------------------------
+Stored Procedure: Load Silver Layer (Bronze -> Silver)
+----------------------------------------------------------------------------------------------------
+Script Purpose:
+    This stored procedure performs the ETL (Extract, Transform, Load) process to populate the 'silver' schema tables from the 'bronze' schema.
+Actions Performed:
+    - Truncates Silver tables.
+    - Inserts transformed and cleansed data from Bronze into Silver tables.
 
-Data Cleansing & Transformation: Uses TRUNCATE TABLE to clear existing data, followed by structured INSERT statements incorporating string trimming, standardizing codes/genders, casting data types, handling nulls/zeroes, and resolving date inconsistencies.
+Parameters:
+    None.
+    This stored procedure does not accept any parameters or return any values.
 
-Performance Tracking: Implements DATETIME variables combined with GETDATE() and DATEDIFF() to measure and print the exact execution duration for each individual table load as well as the full batch load.
-
-Error Handling: Wrapped in a robust TRY...CATCH block to gracefully capture unexpected errors, prevent system disruption, and output error numbers for troubleshooting */
+Usage Example:
+    EXEC silver.load_silver;
+----------------------------------------------------------------------------------------------------
 
 CREATE OR ALTER PROCEDURE silver.load_silver AS 
 BEGIN
